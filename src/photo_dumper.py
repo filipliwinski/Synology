@@ -56,7 +56,7 @@ if not os.path.isdir(photo_target_directory):
     sys.exit(f"{photo_target_directory} is not a valid directory.")
 
 if (dryRun):
-    logging.warn("Dry run is enabled. You may find duplicated file names in the output as the files are never saved to the target location.")
+    logging.warning("Dry run is enabled. You may find duplicated file names in the output as the files are never saved to the target location.")
 
 directories = os.walk(photo_source_directory)
 
@@ -64,7 +64,7 @@ for directory in directories:
     # Check if directory should be excluded
     source_folder = directory[0].split("\\")[-1]
     source_folder_path = directory[0]
-    if (source_folder[0] == "."):
+    if (len(source_folder) > 0 and source_folder[0] == "."):
         logging.info(f"{source_folder_path} skipped (hidden folder).")
         continue
 
