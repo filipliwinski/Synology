@@ -35,7 +35,7 @@ def check_file_uniqueness(source_file_path, target_file_path):
         # The file is a duplicate
         return False
     
-    # The file is not a duplicate, but the file with a given name already exists.
+    # The file is not a duplicate, but the file with a given name already exists
     return None
 
 if (len(sys.argv) < 3):
@@ -78,44 +78,48 @@ for directory in directories:
             for file in files:
                 source_file_path = f"{source_folder_path}\\{file}"
 
+                # Skip unsupported files
                 if (not (file.lower().endswith(".jpg") or file.lower().endswith(".jpeg"))):
                     logging.info(f"{source_file_path} skipped (unsupported file type)")
                     unsupported_files_count += 1
-                    pbar.update(1)
-                    continue
-
-                last_modified = os.path.getmtime(source_file_path)
-                creation_date = get_original_date_taken(source_file_path)
-                target_folder = creation_date.strftime("%Y\\%m")
-                target_folder_path = f"{photo_target_directory}\\{target_folder}"
-
-                source_file_size = os.path.getsize(source_file_path)
-                target_file_name = f"IMG_{creation_date.strftime('%Y%m%d')}_{creation_date.strftime('%H%M%S')}_{source_file_size:08d}.JPG"
-                target_file_path = f"{target_folder_path}\\{target_file_name}"
-                is_unique = check_file_uniqueness(source_file_path, target_file_path)
-
-                if (is_unique is None):
                     skipped_files_count += 1
                     pbar.set_description(f"{source_folder_path} ({skipped_files_count} skipped)")
-                    logging.warn(f"{source_file_path} skipped (a file with this name already exists)")
+                    pbar.update(1)
                 else:
-                    if (is_unique):
-                        if (not dryRun):
-                            if not os.path.exists(target_folder_path):
-                                os.makedirs(target_folder_path, exist_ok=True)
-                            shutil.copyfile(source_file_path, target_file_path)
-                        logging.info(f"{source_file_path} copied to {target_file_path}")
-                    else:
+                    creation_date = get_original_date_taken(source_file_path)
+                    target_folder = creation_date.strftime("%Y\\%m")
+                    target_folder_path = f"{photo_target_directory}\\{target_folder}"
+
+                    source_file_size = os.path.getsize(source_file_path)
+                    target_file_name = f"IMG_{creation_date.strftime('%Y%m%d')}_{creation_date.strftime('%H%M%S')}_{source_file_size:08d}.JPG"
+                    target_file_path = f"{target_folder_path}\\{target_file_name}"
+                    is_unique = check_file_uniqueness(source_file_path, target_file_path)
+
+                    if (is_unique is None):
+                        # The file is unique, but a different one with the same name exists
                         skipped_files_count += 1
-                        duplicate_files_count += 1
-                        pbar.set_description(f"{directory[0]} ({skipped_files_count} skipped)")
-                        logging.info(f"{source_file_path} skipped (duplicate)")
-                
-                pbar.update(1)
+                        pbar.set_description(f"{source_folder_path} ({skipped_files_count} skipped)")
+                        pbar.update(1)
+                        logging.warning(f"{source_file_path} skipped (a file with this name already exists)")
+                    else:
+                        if (is_unique):
+                            # This is a new file
+                            if (not dryRun):
+                                if not os.path.exists(target_folder_path):
+                                    os.makedirs(target_folder_path, exist_ok=True)
+                                shutil.copyfile(source_file_path, target_file_path)
+                            logging.info(f"{source_file_path} copied to {target_file_path}")
+                        else:
+                            # The file is a duplicate
+                            skipped_files_count += 1
+                            duplicate_files_count += 1
+                            pbar.set_description(f"{directory[0]} ({skipped_files_count} skipped)")
+                            pbar.update(1)
+                            logging.info(f"{source_file_path} skipped (duplicate)")
         
         logging.info(f"""
         Operation summary for {source_folder_path}:
         COPIED: {len(files) - skipped_files_count}
         DUPLICATES: {duplicate_files_count}
-        CONFLICTS: {skipped_files_count - duplicate_files_count}
+        CONFLICTS: {skipped_files_count - duplicate_files_count - unsupported_files_count}
         UNSUPPORTED: {unsupported_files_count}""")
