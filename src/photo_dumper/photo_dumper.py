@@ -20,7 +20,7 @@ def get_original_date_taken(photo_file_path):
         return datetime.strptime(date_taken_str, "%Y:%m:%d %H:%M:%S")
 
     # If the tag is not present or is invalid, return last modified date
-    last_modified = os.path.getmtime(source_file_path)
+    last_modified = os.path.getmtime(photo_file_path)
     return datetime.fromtimestamp(last_modified)
 
 def check_file_uniqueness(source_file_path, target_file_path):
