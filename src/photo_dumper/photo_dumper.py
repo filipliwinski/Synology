@@ -83,8 +83,6 @@ for directory in directories:
                     logging.info(f"{source_file_path} skipped (unsupported file type)")
                     unsupported_files_count += 1
                     skipped_files_count += 1
-                    pbar.set_description(f"{source_folder_path} ({skipped_files_count} skipped)")
-                    pbar.update(1)
                 else:
                     creation_date = get_original_date_taken(source_file_path)
                     target_folder = creation_date.strftime("%Y\\%m")
@@ -98,8 +96,6 @@ for directory in directories:
                     if (is_unique is None):
                         # The file is unique, but a different one with the same name exists
                         skipped_files_count += 1
-                        pbar.set_description(f"{source_folder_path} ({skipped_files_count} skipped)")
-                        pbar.update(1)
                         logging.warning(f"{source_file_path} skipped (a file with this name already exists)")
                     else:
                         if (is_unique):
@@ -113,9 +109,9 @@ for directory in directories:
                             # The file is a duplicate
                             skipped_files_count += 1
                             duplicate_files_count += 1
-                            pbar.set_description(f"{directory[0]} ({skipped_files_count} skipped)")
-                            pbar.update(1)
                             logging.info(f"{source_file_path} skipped (duplicate)")
+                pbar.set_description(f"{source_folder_path} ({skipped_files_count} skipped)")
+                pbar.update(1)
         
         logging.info(f"""
         Operation summary for {source_folder_path}:
