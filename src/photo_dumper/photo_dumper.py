@@ -8,6 +8,11 @@ from datetime import datetime
 from tqdm import tqdm
 
 def get_original_date_taken(photo_file_path):
+    """
+    Retrieves the creation date of the photo from the EXIF metadata. 
+    If the EXIF data is not present returns the last modified date.
+    """
+
     # Load the EXIF data from the file
     exif_data = piexif.load(photo_file_path)
 
@@ -24,6 +29,14 @@ def get_original_date_taken(photo_file_path):
     return datetime.fromtimestamp(last_modified)
 
 def check_file_uniqueness(source_file_path, target_file_path):
+    """
+    Returns True if the file is not a duplicate and a file with a given name
+    does not exist in the target location. If the file is a duplicate, returns False
+    and if a file with the given name already exists, returns None.
+
+    Uses file size to determine uniqueness.
+    """
+
     if (not os.path.isfile(target_file_path)):
         # The file is not a duplicate
         return True
@@ -62,6 +75,8 @@ directories = os.walk(photo_source_directory)
 
 for directory in directories:
     # Check if directory should be excluded
+
+    # Get the last part of the path
     source_folder = directory[0].split("\\")[-1]
     source_folder_path = directory[0]
     if (len(source_folder) > 0 and source_folder[0] == "."):
@@ -83,8 +98,6 @@ for directory in directories:
                     logging.info(f"{source_file_path} skipped (unsupported file type)")
                     unsupported_files_count += 1
                     skipped_files_count += 1
-                    pbar.set_description(f"{source_folder_path} ({skipped_files_count} skipped)")
-                    pbar.update(1)
                 else:
                     creation_date = get_original_date_taken(source_file_path)
                     target_folder = creation_date.strftime("%Y\\%m")
@@ -98,8 +111,6 @@ for directory in directories:
                     if (is_unique is None):
                         # The file is unique, but a different one with the same name exists
                         skipped_files_count += 1
-                        pbar.set_description(f"{source_folder_path} ({skipped_files_count} skipped)")
-                        pbar.update(1)
                         logging.warning(f"{source_file_path} skipped (a file with this name already exists)")
                     else:
                         if (is_unique):
@@ -113,9 +124,9 @@ for directory in directories:
                             # The file is a duplicate
                             skipped_files_count += 1
                             duplicate_files_count += 1
-                            pbar.set_description(f"{directory[0]} ({skipped_files_count} skipped)")
-                            pbar.update(1)
                             logging.info(f"{source_file_path} skipped (duplicate)")
+                pbar.set_description(f"{source_folder_path} ({skipped_files_count} skipped)")
+                pbar.update(1)
         
         logging.info(f"""
         Operation summary for {source_folder_path}:
