@@ -6,6 +6,7 @@ import piexif
 
 from datetime import datetime
 from tqdm import tqdm
+from version import __version__
 
 def get_original_date_taken(photo_file_path):
     """
@@ -56,6 +57,8 @@ if (len(sys.argv) < 3):
 
 current_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 logging.basicConfig(level=logging.DEBUG, filename=f"photo_dumper_{current_timestamp}.log", filemode="w")
+
+logging.info(f"Photo Dumper v.{__version__}")
 
 photo_source_directory = sys.argv[1]
 photo_target_directory = sys.argv[2]

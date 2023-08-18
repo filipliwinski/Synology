@@ -22,6 +22,10 @@ To run the script you need Python 3.x with the following modules:
 - [piexif](https://pypi.org/project/piexif/)
 - [tqdm](https://pypi.org/project/tqdm/)
 
+You can install all the dependencies using pip:
+
+    pip install -r requirements.txt
+
 ## How to use
 
 > The script can be run on your local machine, but as Python 3 is available on DSM 7, it can also be run directly on your NAS.
