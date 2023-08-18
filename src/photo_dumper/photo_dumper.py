@@ -64,22 +64,22 @@ logging.basicConfig(
 
 logging.info("Photo Dumper v.%s", __version__)
 
-photo_source_directory = sys.argv[1]
-photo_target_directory = sys.argv[2]
-dryRun = False
+PHOTO_SOURCE_DIRECTORY = sys.argv[1]
+PHOTO_TARGET_DIRECTORY = sys.argv[2]
+DRY_RUN = False
 
 # Validate parameters
-if not os.path.isdir(photo_source_directory):
-    sys.exit(f"{photo_source_directory} is not a valid directory.")
+if not os.path.isdir(PHOTO_SOURCE_DIRECTORY):
+    sys.exit(f"{PHOTO_SOURCE_DIRECTORY} is not a valid directory.")
 
-if not os.path.isdir(photo_target_directory):
-    sys.exit(f"{photo_target_directory} is not a valid directory.")
+if not os.path.isdir(PHOTO_TARGET_DIRECTORY):
+    sys.exit(f"{PHOTO_TARGET_DIRECTORY} is not a valid directory.")
 
-if dryRun:
-    logging.warning("Dry run is enabled. You may find duplicated file names in the output as the files"
-                    "are never saved to the target location.")
+if DRY_RUN:
+    logging.warning("Dry run is enabled. You may find duplicated file names in the output"
+                    "as the files are never saved to the target location.")
 
-directories = os.walk(photo_source_directory)
+directories = os.walk(PHOTO_SOURCE_DIRECTORY)
 
 for directory in directories:
     # Check if directory should be excluded
@@ -97,7 +97,7 @@ for directory in directories:
         skipped_files_count = 0
         duplicate_files_count = 0
         unsupported_files_count = 0
-        with tqdm(total=len(files), 
+        with tqdm(total=len(files),
                   desc=f"{source_folder_path} ({skipped_files_count} skipped)") as pbar:
             for file in files:
                 source_file_path = f"{source_folder_path}\\{file}"
@@ -110,7 +110,7 @@ for directory in directories:
                 else:
                     creation_date = get_original_date_taken(source_file_path)
                     target_folder = creation_date.strftime("%Y\\%m")
-                    target_folder_path = f"{photo_target_directory}\\{target_folder}"
+                    target_folder_path = f"{PHOTO_TARGET_DIRECTORY}\\{target_folder}"
 
                     source_file_size = os.path.getsize(source_file_path)
                     target_file_name = (
@@ -123,11 +123,12 @@ for directory in directories:
                     if is_unique is None:
                         # The file is unique, but a different one with the same name exists
                         skipped_files_count += 1
-                        logging.warning("%s skipped (a file with this name already exists)", source_file_path)
+                        logging.warning("%s skipped (a file with this name already exists)",
+                                        source_file_path)
                     else:
                         if is_unique:
                             # This is a new file
-                            if not dryRun:
+                            if not DRY_RUN:
                                 if not os.path.exists(target_folder_path):
                                     os.makedirs(target_folder_path, exist_ok=True)
                                 shutil.copyfile(source_file_path, target_file_path)
