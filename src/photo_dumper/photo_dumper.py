@@ -53,102 +53,113 @@ def check_file_uniqueness(file_path, destination_file_path):
     # The file is not a duplicate, but the file with a given name already exists
     return None
 
-if len(sys.argv) < 3:
-    sys.exit("Expected arguments: photo_source_directory, photo_target_directory")
+def copy_files(source_directory, target_directory, dry_run):
+    """Copies files from the provided source directory to the target directory."""
 
-current_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-logging.basicConfig(
-    level=logging.DEBUG,
-    filename=f"photo_dumper_{current_timestamp}.log",
-    filemode="w")
+    directories = os.walk(source_directory)
 
-logging.info("Photo Dumper v.%s", __version__)
+    for directory in directories:
+        # Check if directory should be excluded
 
-PHOTO_SOURCE_DIRECTORY = sys.argv[1]
-PHOTO_TARGET_DIRECTORY = sys.argv[2]
-DRY_RUN = False
+        # Get the last part of the path
+        source_folder = directory[0].split("\\")[-1]
+        source_folder_path = directory[0]
+        if len(source_folder) > 0 and source_folder[0] == ".":
+            logging.info("%s skipped (hidden folder).", source_folder_path)
+            continue
 
-# Validate parameters
-if not os.path.isdir(PHOTO_SOURCE_DIRECTORY):
-    sys.exit(f"{PHOTO_SOURCE_DIRECTORY} is not a valid directory.")
+        # Get files in directory
+        files = directory[2]
+        if len(files) > 0:
+            skipped_files_count = 0
+            duplicate_files_count = 0
+            unsupported_files_count = 0
+            with tqdm(total=len(files),
+                    desc=f"{source_folder_path} ({skipped_files_count} skipped)") as pbar:
+                for file in files:
+                    source_file_path = f"{source_folder_path}\\{file}"
 
-if not os.path.isdir(PHOTO_TARGET_DIRECTORY):
-    sys.exit(f"{PHOTO_TARGET_DIRECTORY} is not a valid directory.")
-
-if DRY_RUN:
-    logging.warning("Dry run is enabled. You may find duplicated file names in the output"
-                    "as the files are never saved to the target location.")
-
-directories = os.walk(PHOTO_SOURCE_DIRECTORY)
-
-for directory in directories:
-    # Check if directory should be excluded
-
-    # Get the last part of the path
-    source_folder = directory[0].split("\\")[-1]
-    source_folder_path = directory[0]
-    if len(source_folder) > 0 and source_folder[0] == ".":
-        logging.info("%s skipped (hidden folder).", source_folder_path)
-        continue
-
-    # Get files in directory
-    files = directory[2]
-    if len(files) > 0:
-        skipped_files_count = 0
-        duplicate_files_count = 0
-        unsupported_files_count = 0
-        with tqdm(total=len(files),
-                  desc=f"{source_folder_path} ({skipped_files_count} skipped)") as pbar:
-            for file in files:
-                source_file_path = f"{source_folder_path}\\{file}"
-
-                # Skip unsupported files
-                if not (file.lower().endswith(".jpg") or file.lower().endswith(".jpeg")):
-                    logging.info("%s skipped (unsupported file type)", source_file_path)
-                    unsupported_files_count += 1
-                    skipped_files_count += 1
-                else:
-                    creation_date = get_original_date_taken(source_file_path)
-                    target_folder = creation_date.strftime("%Y\\%m")
-                    target_folder_path = f"{PHOTO_TARGET_DIRECTORY}\\{target_folder}"
-
-                    source_file_size = os.path.getsize(source_file_path)
-                    target_file_name = (
-                        f"IMG_{creation_date.strftime('%Y%m%d')}_"
-                        f"{creation_date.strftime('%H%M%S')}_"
-                        f"{source_file_size:08d}.JPG")
-                    target_file_path = f"{target_folder_path}\\{target_file_name}"
-                    is_unique = check_file_uniqueness(source_file_path, target_file_path)
-
-                    if is_unique is None:
-                        # The file is unique, but a different one with the same name exists
+                    # Skip unsupported files
+                    if not (file.lower().endswith(".jpg") or file.lower().endswith(".jpeg")):
+                        logging.info("%s skipped (unsupported file type)", source_file_path)
+                        unsupported_files_count += 1
                         skipped_files_count += 1
-                        logging.warning("%s skipped (a file with this name already exists)",
-                                        source_file_path)
                     else:
-                        if is_unique:
-                            # This is a new file
-                            if not DRY_RUN:
-                                if not os.path.exists(target_folder_path):
-                                    os.makedirs(target_folder_path, exist_ok=True)
-                                shutil.copyfile(source_file_path, target_file_path)
-                            logging.info("%s copied to %s", source_file_path, target_file_path)
-                        else:
-                            # The file is a duplicate
-                            skipped_files_count += 1
-                            duplicate_files_count += 1
-                            logging.info("%s skipped (duplicate)", source_file_path)
-                pbar.set_description(f"{source_folder_path} ({skipped_files_count} skipped)")
-                pbar.update(1)
+                        creation_date = get_original_date_taken(source_file_path)
+                        target_folder = creation_date.strftime("%Y\\%m")
+                        target_folder_path = f"{target_directory}\\{target_folder}"
 
-        logging.info("""
-        Operation summary for %s:
-        COPIED: %d
-        DUPLICATES: %d
-        CONFLICTS: %d
-        UNSUPPORTED: %d""",
-        source_folder_path,
-        len(files) - skipped_files_count,
-        duplicate_files_count,
-        skipped_files_count - duplicate_files_count - unsupported_files_count,
-        unsupported_files_count)
+                        source_file_size = os.path.getsize(source_file_path)
+                        target_file_name = (
+                            f"IMG_{creation_date.strftime('%Y%m%d')}_"
+                            f"{creation_date.strftime('%H%M%S')}_"
+                            f"{source_file_size:08d}.JPG")
+                        target_file_path = f"{target_folder_path}\\{target_file_name}"
+                        is_unique = check_file_uniqueness(source_file_path, target_file_path)
+
+                        if is_unique is None:
+                            # The file is unique, but a different one with the same name exists
+                            skipped_files_count += 1
+                            logging.warning("%s skipped (a file with this name already exists)",
+                                            source_file_path)
+                        else:
+                            if is_unique:
+                                # This is a new file
+                                if not dry_run:
+                                    if not os.path.exists(target_folder_path):
+                                        os.makedirs(target_folder_path, exist_ok=True)
+                                    shutil.copyfile(source_file_path, target_file_path)
+                                logging.info("%s copied to %s", source_file_path, target_file_path)
+                            else:
+                                # The file is a duplicate
+                                skipped_files_count += 1
+                                duplicate_files_count += 1
+                                logging.info("%s skipped (duplicate)", source_file_path)
+                    pbar.set_description(f"{source_folder_path} ({skipped_files_count} skipped)")
+                    pbar.update(1)
+
+            logging.info("""
+            Operation summary for %s:
+            COPIED: %d
+            DUPLICATES: %d
+            CONFLICTS: %d
+            UNSUPPORTED: %d""",
+            source_folder_path,
+            len(files) - skipped_files_count,
+            duplicate_files_count,
+            skipped_files_count - duplicate_files_count - unsupported_files_count,
+            unsupported_files_count)
+
+def main():
+    """Validates arguments and executes the script."""
+
+    if len(sys.argv) < 3:
+        sys.exit("Expected arguments: source_directory, target_directory")
+
+    current_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    logging.basicConfig(
+        level=logging.DEBUG,
+        filename=f"photo_dumper_{current_timestamp}.log",
+        filemode="w")
+
+    logging.info("Photo Dumper v.%s", __version__)
+
+    source_directory = sys.argv[1]
+    target_directory = sys.argv[2]
+    dry_run = False
+
+    # Validate arguments
+    if not os.path.isdir(source_directory):
+        sys.exit(f"{source_directory} is not a valid directory.")
+
+    if not os.path.isdir(target_directory):
+        sys.exit(f"{target_directory} is not a valid directory.")
+
+    if dry_run:
+        logging.warning("Dry run is enabled. You may find duplicated file names in the output"
+                        "as the files are never saved to the target location.")
+
+    copy_files(source_directory, target_directory, dry_run)
+
+if __name__ == "__main__":
+    main()
