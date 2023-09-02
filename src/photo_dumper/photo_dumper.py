@@ -1,3 +1,6 @@
+# Copyright (c) Filip Liwiński
+# Licensed under the MIT License. See the LICENSE file in the project root for license information.
+
 """Allows to copy photos from a local directory to Synology Photos."""
 import os
 import shutil
@@ -9,7 +12,77 @@ import piexif
 from tqdm import tqdm
 from version import __version__
 
-def get_original_date_taken(photo_file_path):
+
+class FileStats:
+    """
+    Collects statistics of file operations.
+    """
+
+    def __init__(self, total):
+        self.total = total
+        self.skipped = 0
+        self.conflicts = 0
+        self.duplicates = 0
+        self.unsupported = 0
+
+    @property
+    def total(self):
+        """Returns the total number of files."""
+        return self.total
+
+    @property
+    def copied(self):
+        """Returns the number of copied files."""
+        return self.total - self.skipped
+
+    @property
+    def skipped(self):
+        """Returns the number of skipped files."""
+        return self.skipped
+
+    @property
+    def conflicts(self):
+        """Returns the number of files with name conflicts."""
+        return self.conflicts
+
+    @property
+    def duplicates(self):
+        """Returns the number of duplicated files."""
+        return self.duplicates
+
+    @property
+    def unsupported(self):
+        """Returns the number of unsupported files."""
+        return self.unsupported
+
+    def report_skipped(self):
+        """Increments the number of skipped files."""
+        self.skipped += 1
+
+    def report_conflict(self):
+        """Increments the number of files with name conflicts."""
+        self.conflicts += 1
+        self.report_skipped()
+
+    def report_duplicate(self):
+        """Increments the number of duplicated files."""
+        self.duplicates += 1
+        self.report_skipped()
+
+    def report_unsupported(self):
+        """Increments the number of unsupported files."""
+        self.unsupported += 1
+        self.report_skipped()
+
+    def __str__(self):
+        return f"""
+        COPIED: {self.copied}
+        DUPLICATES: {self.duplicates}
+        CONFLICTS: {self.conflicts}
+        UNSUPPORTED: {self.unsupported}"""
+
+
+def _get_original_date_taken(photo_file_path):
     """
     Retrieves the creation date of the photo from the EXIF metadata. 
     If the EXIF data is not present returns the last modified date.
@@ -30,7 +103,8 @@ def get_original_date_taken(photo_file_path):
     last_modified = os.path.getmtime(photo_file_path)
     return datetime.fromtimestamp(last_modified)
 
-def check_file_uniqueness(file_path, destination_file_path):
+
+def _check_file_uniqueness(file_path, destination_file_path):
     """
     Returns True if the file is not a duplicate and a file with a given name
     does not exist in the target location. If the file is a duplicate, returns False
@@ -53,7 +127,8 @@ def check_file_uniqueness(file_path, destination_file_path):
     # The file is not a duplicate, but the file with a given name already exists
     return None
 
-def copy_files(source_directory, target_directory, dry_run):
+
+def _copy_files(source_directory, target_directory, dry_run):
     """Copies files from the provided source directory to the target directory."""
 
     directories = os.walk(source_directory)
@@ -71,21 +146,20 @@ def copy_files(source_directory, target_directory, dry_run):
         # Get files in directory
         files = directory[2]
         if len(files) > 0:
-            skipped_files_count = 0
-            duplicate_files_count = 0
-            unsupported_files_count = 0
+            file_stats = FileStats(len(files))
             with tqdm(total=len(files),
-                    desc=f"{source_folder_path} ({skipped_files_count} skipped)") as pbar:
+                      desc=f"{source_folder_path} ({file_stats.skipped} skipped)") as pbar:
                 for file in files:
                     source_file_path = f"{source_folder_path}\\{file}"
 
                     # Skip unsupported files
                     if not (file.lower().endswith(".jpg") or file.lower().endswith(".jpeg")):
-                        logging.info("%s skipped (unsupported file type)", source_file_path)
-                        unsupported_files_count += 1
-                        skipped_files_count += 1
+                        logging.info(
+                            "%s skipped (unsupported file type)", source_file_path)
+                        file_stats.report_unsupported()
                     else:
-                        creation_date = get_original_date_taken(source_file_path)
+                        creation_date = _get_original_date_taken(
+                            source_file_path)
                         target_folder = creation_date.strftime("%Y\\%m")
                         target_folder_path = f"{target_directory}\\{target_folder}"
 
@@ -95,40 +169,38 @@ def copy_files(source_directory, target_directory, dry_run):
                             f"{creation_date.strftime('%H%M%S')}_"
                             f"{source_file_size:08d}.JPG")
                         target_file_path = f"{target_folder_path}\\{target_file_name}"
-                        is_unique = check_file_uniqueness(source_file_path, target_file_path)
+                        is_unique = _check_file_uniqueness(
+                            source_file_path, target_file_path)
 
                         if is_unique is None:
                             # The file is unique, but a different one with the same name exists
-                            skipped_files_count += 1
-                            logging.warning("%s skipped (a file with this name already exists)",
+                            file_stats.report_conflict()
+                            logging.warning("%s skipped (conflict - a file with this name already exists)",
                                             source_file_path)
                         else:
                             if is_unique:
                                 # This is a new file
                                 if not dry_run:
                                     if not os.path.exists(target_folder_path):
-                                        os.makedirs(target_folder_path, exist_ok=True)
-                                    shutil.copyfile(source_file_path, target_file_path)
-                                logging.info("%s copied to %s", source_file_path, target_file_path)
+                                        os.makedirs(
+                                            target_folder_path, exist_ok=True)
+                                    shutil.copyfile(
+                                        source_file_path, target_file_path)
+                                logging.info("%s copied to %s",
+                                             source_file_path, target_file_path)
+
                             else:
                                 # The file is a duplicate
-                                skipped_files_count += 1
-                                duplicate_files_count += 1
-                                logging.info("%s skipped (duplicate)", source_file_path)
-                    pbar.set_description(f"{source_folder_path} ({skipped_files_count} skipped)")
+                                file_stats.report_duplicate()
+                                logging.info(
+                                    "%s skipped (duplicate)", source_file_path)
+                    pbar.set_description(
+                        f"{source_folder_path} ({file_stats.skipped} skipped)")
                     pbar.update(1)
 
-            logging.info("""
-            Operation summary for %s:
-            COPIED: %d
-            DUPLICATES: %d
-            CONFLICTS: %d
-            UNSUPPORTED: %d""",
-            source_folder_path,
-            len(files) - skipped_files_count,
-            duplicate_files_count,
-            skipped_files_count - duplicate_files_count - unsupported_files_count,
-            unsupported_files_count)
+            logging.info("""Operation summary for %s: %s""",
+                         source_folder_path, file_stats)
+
 
 def main():
     """Validates arguments and executes the script."""
@@ -159,7 +231,8 @@ def main():
         logging.warning("Dry run is enabled. You may find duplicated file names in the output"
                         "as the files are never saved to the target location.")
 
-    copy_files(source_directory, target_directory, dry_run)
+    _copy_files(source_directory, target_directory, dry_run)
+
 
 if __name__ == "__main__":
     main()
