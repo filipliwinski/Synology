@@ -128,8 +128,57 @@ def _check_file_uniqueness(file_path, destination_file_path):
     return None
 
 
-def _copy_files(source_directory, target_directory, dry_run):
-    """Copies files from the provided source directory to the target directory."""
+def _verify_and_copy_file(file, source_file_path, target_directory, dry_run, file_stats):
+    """
+    Verifies and copies the given file from the provided source directory to the target directory.
+    """
+
+    # Skip unsupported files
+    if not (file.lower().endswith(".jpg") or file.lower().endswith(".jpeg")):
+        logging.info(
+            "%s skipped (unsupported file type)", source_file_path)
+        file_stats.report_unsupported()
+    else:
+        creation_date = _get_original_date_taken(
+            source_file_path)
+        target_folder = creation_date.strftime("%Y\\%m")
+        target_folder_path = f"{target_directory}\\{target_folder}"
+
+        source_file_size = os.path.getsize(source_file_path)
+        target_file_name = (
+            f"IMG_{creation_date.strftime('%Y%m%d')}_"
+            f"{creation_date.strftime('%H%M%S')}_"
+            f"{source_file_size:08d}.JPG")
+        target_file_path = f"{target_folder_path}\\{target_file_name}"
+        is_unique = _check_file_uniqueness(
+            source_file_path, target_file_path)
+
+        if is_unique is None:
+            # The file is unique, but a different one with the same name exists
+            file_stats.report_conflict()
+            logging.warning(
+                "%s skipped (conflict - a file with this name already exists)",
+                source_file_path)
+        else:
+            if is_unique:
+                # This is a new file
+                if not dry_run:
+                    if not os.path.exists(target_folder_path):
+                        os.makedirs(
+                            target_folder_path, exist_ok=True)
+                    shutil.copyfile(
+                        source_file_path, target_file_path)
+                logging.info("%s copied to %s",
+                                source_file_path, target_file_path)
+
+            else:
+                # The file is a duplicate
+                file_stats.report_duplicate()
+                logging.info(
+                    "%s skipped (duplicate)", source_file_path)
+
+def _verify_and_copy_files(source_directory, target_directory, dry_run):
+    """Verifies and copies files from the provided source directory to the target directory."""
 
     directories = os.walk(source_directory)
 
@@ -152,48 +201,9 @@ def _copy_files(source_directory, target_directory, dry_run):
                 for file in files:
                     source_file_path = f"{source_folder_path}\\{file}"
 
-                    # Skip unsupported files
-                    if not (file.lower().endswith(".jpg") or file.lower().endswith(".jpeg")):
-                        logging.info(
-                            "%s skipped (unsupported file type)", source_file_path)
-                        file_stats.report_unsupported()
-                    else:
-                        creation_date = _get_original_date_taken(
-                            source_file_path)
-                        target_folder = creation_date.strftime("%Y\\%m")
-                        target_folder_path = f"{target_directory}\\{target_folder}"
+                    _verify_and_copy_file(
+                        file, source_file_path, target_directory, dry_run, file_stats)
 
-                        source_file_size = os.path.getsize(source_file_path)
-                        target_file_name = (
-                            f"IMG_{creation_date.strftime('%Y%m%d')}_"
-                            f"{creation_date.strftime('%H%M%S')}_"
-                            f"{source_file_size:08d}.JPG")
-                        target_file_path = f"{target_folder_path}\\{target_file_name}"
-                        is_unique = _check_file_uniqueness(
-                            source_file_path, target_file_path)
-
-                        if is_unique is None:
-                            # The file is unique, but a different one with the same name exists
-                            file_stats.report_conflict()
-                            logging.warning("%s skipped (conflict - a file with this name already exists)",
-                                            source_file_path)
-                        else:
-                            if is_unique:
-                                # This is a new file
-                                if not dry_run:
-                                    if not os.path.exists(target_folder_path):
-                                        os.makedirs(
-                                            target_folder_path, exist_ok=True)
-                                    shutil.copyfile(
-                                        source_file_path, target_file_path)
-                                logging.info("%s copied to %s",
-                                             source_file_path, target_file_path)
-
-                            else:
-                                # The file is a duplicate
-                                file_stats.report_duplicate()
-                                logging.info(
-                                    "%s skipped (duplicate)", source_file_path)
                     pbar.set_description(
                         f"{source_folder_path} ({file_stats.skipped} skipped)")
                     pbar.update(1)
@@ -231,7 +241,7 @@ def main():
         logging.warning("Dry run is enabled. You may find duplicated file names in the output"
                         "as the files are never saved to the target location.")
 
-    _copy_files(source_directory, target_directory, dry_run)
+    _verify_and_copy_files(source_directory, target_directory, dry_run)
 
 
 if __name__ == "__main__":
