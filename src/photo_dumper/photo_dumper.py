@@ -11,75 +11,7 @@ import piexif
 
 from tqdm import tqdm
 from version import __version__
-
-
-class FileStats:
-    """
-    Collects statistics of file operations.
-    """
-
-    def __init__(self, total):
-        self.total = total
-        self.skipped = 0
-        self.conflicts = 0
-        self.duplicates = 0
-        self.unsupported = 0
-
-    @property
-    def total(self):
-        """Returns the total number of files."""
-        return self.total
-
-    @property
-    def copied(self):
-        """Returns the number of copied files."""
-        return self.total - self.skipped
-
-    @property
-    def skipped(self):
-        """Returns the number of skipped files."""
-        return self.skipped
-
-    @property
-    def conflicts(self):
-        """Returns the number of files with name conflicts."""
-        return self.conflicts
-
-    @property
-    def duplicates(self):
-        """Returns the number of duplicated files."""
-        return self.duplicates
-
-    @property
-    def unsupported(self):
-        """Returns the number of unsupported files."""
-        return self.unsupported
-
-    def report_skipped(self):
-        """Increments the number of skipped files."""
-        self.skipped += 1
-
-    def report_conflict(self):
-        """Increments the number of files with name conflicts."""
-        self.conflicts += 1
-        self.report_skipped()
-
-    def report_duplicate(self):
-        """Increments the number of duplicated files."""
-        self.duplicates += 1
-        self.report_skipped()
-
-    def report_unsupported(self):
-        """Increments the number of unsupported files."""
-        self.unsupported += 1
-        self.report_skipped()
-
-    def __str__(self):
-        return f"""
-        COPIED: {self.copied}
-        DUPLICATES: {self.duplicates}
-        CONFLICTS: {self.conflicts}
-        UNSUPPORTED: {self.unsupported}"""
+from file_stats import FileStats
 
 
 def _get_original_date_taken(photo_file_path):
@@ -195,7 +127,7 @@ def _verify_and_copy_files(source_directory, target_directory, dry_run):
         # Get files in directory
         files = directory[2]
         if len(files) > 0:
-            file_stats = FileStats(len(files))
+            file_stats = FileStats()
             with tqdm(total=len(files),
                       desc=f"{source_folder_path} ({file_stats.skipped} skipped)") as pbar:
                 for file in files:
