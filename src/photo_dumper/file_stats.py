@@ -37,12 +37,12 @@ class FileStats:
     @property
     def duplicates(self):
         """Returns the number of duplicated files."""
-        return self.duplicates
+        return self._duplicates
 
     @property
     def unsupported(self):
         """Returns the number of unsupported files."""
-        return self.unsupported
+        return self._unsupported
 
     def report_copied(self):
         """Increments the number of copied files."""
