@@ -8,11 +8,14 @@ import sys
 import logging
 from datetime import datetime
 import piexif
+import hashlib
 
 from tqdm import tqdm
 from version import __version__
 from file_stats import FileStats
 
+EXIF_DATE_TIME_ORGINAL = "0x9003"
+HASH_ALGHORITM == "sha256"
 
 def _get_original_date_taken(photo_file_path):
     """
@@ -24,7 +27,7 @@ def _get_original_date_taken(photo_file_path):
     exif_data = piexif.load(photo_file_path)
 
     # Get the value of the DateTimeOriginal tag (0x9003) from the EXIF data
-    date_taken = exif_data["Exif"].get(0x9003)
+    date_taken = exif_data["Exif"].get(EXIF_DATE_TIME_ORGINAL)
 
     # If the tag is present, convert the value to a datetime object and return it
     if date_taken:
@@ -49,10 +52,10 @@ def _check_file_uniqueness(file_path, destination_file_path):
         # The file is not a duplicate
         return True
 
-    desctination_file_size = os.path.getsize(destination_file_path)
+    destination_file_size = os.path.getsize(destination_file_path)
     file_size = os.path.getsize(file_path)
 
-    if desctination_file_size == file_size:
+    if destination_file_size == file_size:
         # The file is a duplicate
         return False
 

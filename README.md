@@ -28,5 +28,5 @@ Synology Photos shows photos stored in hidden folders (unix style). This script 
 
 ### Photo Slideshow
 
-It is possible to display a slideshow directly in the Synology Photos web interface, but it is very limited (it can be only run for one Album/tag, the sliseshow speed cannot be adjused, nor the order of the photos). The script will allow to select multiple tags, specifiy start and end dates and will cache the images on the device if needed.
+It is possible to display a slideshow directly in the Synology Photos web interface, but it is very limited (it can be only run for one Album/tag, the speed of the slideshow cannot be adjused, nor the order of the photos). The script will allow to select multiple tags, specifiy start and end dates and will cache the images on the device if needed.
 
