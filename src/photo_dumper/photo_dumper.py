@@ -100,6 +100,7 @@ def _verify_and_copy_file(file, source_file_path, target_directory, dry_run, fil
                             target_folder_path, exist_ok=True)
                     shutil.copyfile(
                         source_file_path, target_file_path)
+                file_stats.report_copied()
                 logging.info("%s copied to %s",
                                 source_file_path, target_file_path)
 

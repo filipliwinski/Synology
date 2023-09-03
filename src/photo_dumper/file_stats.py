@@ -44,6 +44,10 @@ class FileStats:
         """Returns the number of unsupported files."""
         return self.unsupported
 
+    def report_copied(self):
+        """Increments the number of copied files."""
+        self._copied += 1
+
     def report_skipped(self):
         """Increments the number of skipped files."""
         self._skipped += 1
