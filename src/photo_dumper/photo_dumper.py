@@ -43,7 +43,7 @@ def _calculate_file_hash(file_path):
     """
     Calculates the hash of the provided file using the SHA-256 alghoritm.
     """
-    
+
     sha256 = hashlib.sha256()
 
     with open(file_path, "rb") as file:
@@ -69,7 +69,7 @@ def _check_file_uniqueness(file_path, destination_file_path):
 
     destination_file_hash =  _calculate_file_hash(destination_file_path)
     file_hash = _calculate_file_hash(file_path)
-    
+
     if destination_file_hash == file_hash:
         # The file is a duplicate
         return False
@@ -175,7 +175,7 @@ def main():
         level=logging.DEBUG,
         filename=f"photo_dumper_{current_timestamp}.log",
         filemode="w")
-    
+
     script_name = f"Photo Dumper v.{__version__}"
     logging.info(script_name)
     print(script_name)
