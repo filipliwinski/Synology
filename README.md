@@ -1,5 +1,7 @@
 # Synology
 
+[![Pylint](https://github.com/filipliwinski/Synology/actions/workflows/pylint.yml/badge.svg)](https://github.com/filipliwinski/Synology/actions/workflows/pylint.yml)
+
 This repository contains a set of Python scripts that streamline processes not supported by Synology services (e.g. Synology Photos). Each script is responsible for its own purpose and is documented in a README file located in the script's directory.
 
 ## How to contribute?
