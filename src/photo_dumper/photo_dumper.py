@@ -6,6 +6,7 @@ import os
 import shutil
 import sys
 import logging
+import hashlib
 from datetime import datetime
 import piexif
 
@@ -13,6 +14,9 @@ from tqdm import tqdm
 from version import __version__
 from file_stats import FileStats
 
+EXIF_DATE_TIME_ORGINAL = "0x9003"
+TARGET_FILE_NAME_PREFIX = "IMG"
+TARGET_FILE_FORMAT = "JPG"
 
 def _get_original_date_taken(photo_file_path):
     """
@@ -24,7 +28,7 @@ def _get_original_date_taken(photo_file_path):
     exif_data = piexif.load(photo_file_path)
 
     # Get the value of the DateTimeOriginal tag (0x9003) from the EXIF data
-    date_taken = exif_data["Exif"].get(0x9003)
+    date_taken = exif_data["Exif"].get(EXIF_DATE_TIME_ORGINAL)
 
     # If the tag is present, convert the value to a datetime object and return it
     if date_taken:
@@ -35,6 +39,20 @@ def _get_original_date_taken(photo_file_path):
     last_modified = os.path.getmtime(photo_file_path)
     return datetime.fromtimestamp(last_modified)
 
+def _calculate_file_hash(file_path):
+    """
+    Calculates the hash of the provided file using the SHA-256 alghoritm.
+    """
+
+    sha256 = hashlib.sha256()
+
+    with open(file_path, "rb") as file:
+        file_bytes = file.read()
+        sha256.update(file_bytes)
+
+    file_hash = sha256.hexdigest()
+
+    return file_hash
 
 def _check_file_uniqueness(file_path, destination_file_path):
     """
@@ -42,21 +60,21 @@ def _check_file_uniqueness(file_path, destination_file_path):
     does not exist in the target location. If the file is a duplicate, returns False
     and if a file with the given name already exists, returns None.
 
-    Uses file size to determine uniqueness.
+    Uses file hash to determine uniqueness.
     """
 
     if not os.path.isfile(destination_file_path):
         # The file is not a duplicate
         return True
 
-    desctination_file_size = os.path.getsize(destination_file_path)
-    file_size = os.path.getsize(file_path)
+    destination_file_hash =  _calculate_file_hash(destination_file_path)
+    file_hash = _calculate_file_hash(file_path)
 
-    if desctination_file_size == file_size:
+    if destination_file_hash == file_hash:
         # The file is a duplicate
         return False
 
-    # The file is not a duplicate, but the file with a given name already exists
+    # The file is not a duplicate, but a file with a given name already exists
     return None
 
 
@@ -78,9 +96,10 @@ def _verify_and_copy_file(file, source_file_path, target_directory, dry_run, fil
 
         source_file_size = os.path.getsize(source_file_path)
         target_file_name = (
-            f"IMG_{creation_date.strftime('%Y%m%d')}_"
+            f"{TARGET_FILE_NAME_PREFIX}_"
+            f"{creation_date.strftime('%Y%m%d')}_"
             f"{creation_date.strftime('%H%M%S')}_"
-            f"{source_file_size:08d}.JPG")
+            f"{source_file_size:08d}.{TARGET_FILE_FORMAT}")
         target_file_path = f"{target_folder_path}\\{target_file_name}"
         is_unique = _check_file_uniqueness(
             source_file_path, target_file_path)
@@ -89,7 +108,7 @@ def _verify_and_copy_file(file, source_file_path, target_directory, dry_run, fil
             # The file is unique, but a different one with the same name exists
             file_stats.report_conflict()
             logging.warning(
-                "%s skipped (conflict - a file with this name already exists)",
+                "%s skipped (conflict - a file with the given name already exists)",
                 source_file_path)
         else:
             if is_unique:
@@ -157,7 +176,9 @@ def main():
         filename=f"photo_dumper_{current_timestamp}.log",
         filemode="w")
 
-    logging.info("Photo Dumper v.%s", __version__)
+    script_name = f"Photo Dumper v.{__version__}"
+    logging.info(script_name)
+    print(script_name)
 
     source_directory = sys.argv[1]
     target_directory = sys.argv[2]
