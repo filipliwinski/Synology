@@ -3,7 +3,7 @@
 
 """Removes hidden files from the provieded location."""
 import argparse
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 import os
 import sys
@@ -30,13 +30,27 @@ def _delete_items(items_to_remove, dry_run):
     """Deletes items from disk."""
 
     for item in items_to_remove:
-        logger.info("Deleted %s", item)
+        if dry_run:
+            logger.info("Deleted %s [dry ryn]", item)
+        else:
+            os.remove(item)
+            logger.info("Deleted %s", item)
 
 
 def _should_be_removed(full_path, item_age_in_hours):
     """Checks if an item should be removed, based on its last modification date."""
 
-    return True
+    current_datetime = datetime.now()
+    last_modified_datetime = datetime.fromtimestamp(os.path.getmtime(full_path))
+
+    should_be_removed = False
+
+    if last_modified_datetime + timedelta(hours=item_age_in_hours) < current_datetime:
+        should_be_removed = True
+
+    logger.info("%s - %s", full_path, should_be_removed)
+
+    return should_be_removed
 
 
 def _find_items_to_remove(photos_location, max_age_in_hours):
@@ -52,7 +66,6 @@ def _find_items_to_remove(photos_location, max_age_in_hours):
             if directory[0] == ".":
                 full_path = os.path.join(root, directory)
                 if _should_be_removed(full_path, max_age_in_hours):
-                    logger.debug("To delete: %s", full_path)
                     items_to_remove.append(full_path)
 
         for file in files:
@@ -60,7 +73,6 @@ def _find_items_to_remove(photos_location, max_age_in_hours):
                 full_path = os.path.join(root, file)
                 if items_to_remove.count(root) == 0:
                     if _should_be_removed(full_path, max_age_in_hours):
-                        logger.debug("To delete: %s", full_path)
                         items_to_remove.append(full_path)
 
     return items_to_remove

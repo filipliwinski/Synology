@@ -26,7 +26,7 @@ Below are listed ideas of scripts that may be developed in the future. There is 
 
 ### Photo Cleaner
 
-Synology Photos shows photos stored in hidden folders (unix style). This script will allow to remove files stored in hidden folders, that are created by third party tools (like Google Picasa, which stores originals of  edited photos in folders called _.picasaoriginals_). It will alow to specify number of hours/days after which these original photos will be removed.
+Synology Photos shows photos stored in hidden folders (unix style). This script will allow to remove files stored in hidden folders, that are created by third party tools (like Google Picasa, which stores originals of edited photos in folders called _.picasaoriginals_). It will alow to specify number of hours/days after which these original photos will be removed.
 
 ### Photo Slideshow
 
