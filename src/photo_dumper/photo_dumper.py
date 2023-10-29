@@ -46,13 +46,18 @@ def _calculate_file_hash(file_path):
 
     sha256 = hashlib.sha256()
 
-    with open(file_path, "rb") as file:
-        file_bytes = file.read()
-        sha256.update(file_bytes)
+    try:
+        with open(file_path, "rb") as file:
+            file_bytes = file.read()
+            sha256.update(file_bytes)
 
-    file_hash = sha256.hexdigest()
+        file_hash = sha256.hexdigest()
 
-    return file_hash
+        return file_hash
+    except OSError:
+        logging.exception("Unable to calculate hash of file %s", file_path)
+
+    return ""
 
 def _check_file_uniqueness(file_path, destination_file_path):
     """
