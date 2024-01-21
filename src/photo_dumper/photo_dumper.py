@@ -94,52 +94,54 @@ def _verify_and_copy_file(file, source_file_path, target_directory, dry_run, fil
         logging.info(
             "%s skipped (unsupported file type)", source_file_path)
         file_stats.report_unsupported()
-    else:
-        creation_date = _get_original_date_taken(
-            source_file_path)
-        target_folder = creation_date.strftime("%Y\\%m")
-        target_folder_path = f"{target_directory}\\{target_folder}"
+        return
 
-        source_file_size = os.path.getsize(source_file_path)
-        target_file_name = (
-            f"{TARGET_FILE_NAME_PREFIX}_"
-            f"{creation_date.strftime('%Y%m%d')}_"
-            f"{creation_date.strftime('%H%M%S')}_"
-            f"{source_file_size:08d}.{TARGET_FILE_FORMAT}")
-        target_file_path = f"{target_folder_path}\\{target_file_name}"
-        try:
-            is_unique = _check_file_uniqueness(
-                source_file_path, target_file_path)
+    creation_date = _get_original_date_taken(source_file_path)
+    target_folder = creation_date.strftime("%Y\\%m")
+    target_folder_path = f"{target_directory}\\{target_folder}"
 
-            if is_unique is None:
-                # The file is unique, but a different one with the same name exists
-                file_stats.report_conflict()
-                logging.warning(
-                    "%s skipped (conflict - a file with the given name already exists)",
-                    source_file_path)
-            else:
-                if is_unique:
-                    # This is a new file
-                    if not dry_run:
-                        if not os.path.exists(target_folder_path):
-                            os.makedirs(
-                                target_folder_path, exist_ok=True)
-                        shutil.copyfile(
+    source_file_size = os.path.getsize(source_file_path)
+    target_file_name = (
+        f"{TARGET_FILE_NAME_PREFIX}_"
+        f"{creation_date.strftime('%Y%m%d')}_"
+        f"{creation_date.strftime('%H%M%S')}_"
+        f"{source_file_size:08d}.{TARGET_FILE_FORMAT}")
+    target_file_path = f"{target_folder_path}\\{target_file_name}"
+    try:
+        is_unique = _check_file_uniqueness(
+            source_file_path, target_file_path)
+
+        if is_unique is None:
+            # The file is unique, but a different one with the same name exists
+            file_stats.report_conflict()
+            logging.warning(
+                "%s skipped (conflict - a file with the given name already exists)",
+                source_file_path)
+            return
+
+        if is_unique:
+            # This is a new file
+            if not dry_run:
+                if not os.path.exists(target_folder_path):
+                    os.makedirs(
+                        target_folder_path, exist_ok=True)
+                shutil.copyfile(
+                    source_file_path, target_file_path)
+            file_stats.report_copied()
+            logging.info("%s copied to %s",
                             source_file_path, target_file_path)
-                    file_stats.report_copied()
-                    logging.info("%s copied to %s",
-                                    source_file_path, target_file_path)
+            return
 
-                else:
-                    # The file is a duplicate
-                    file_stats.report_duplicate()
-                    logging.info(
-                        "%s skipped (duplicate)", source_file_path)
-        except OSError:
-            # An error occured
-            file_stats.report_error()
-            logging.info(
-                "%s skipped (error - see the above logs for details)", source_file_path)
+        # The file is a duplicate
+        file_stats.report_duplicate()
+        logging.info(
+            "%s skipped (duplicate)", source_file_path)
+
+    except OSError:
+        # An error occured
+        file_stats.report_error()
+        logging.info(
+            "%s skipped (error - see the above logs for details)", source_file_path)
 
 def _verify_and_copy_files(source_directory, target_directory, dry_run):
     """Verifies and copies files from the provided source directory to the target directory."""
@@ -183,7 +185,8 @@ def _verify_and_copy_files(source_directory, target_directory, dry_run):
                 else:
                     warning_message += f"{file_stats.errors} errors"
 
-                warning_message += " occurred during the photo processing. Check the log file for details."
+                warning_message += (" occurred during the photo processing."
+                                    "Check the log file for details.")
                 print(warning_message)
 
 
