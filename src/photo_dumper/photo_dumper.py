@@ -56,6 +56,7 @@ def _calculate_file_hash(file_path):
         return file_hash
     except OSError:
         logging.exception("Unable to calculate hash of file %s", file_path)
+        raise
 
     return ""
 
@@ -106,33 +107,39 @@ def _verify_and_copy_file(file, source_file_path, target_directory, dry_run, fil
             f"{creation_date.strftime('%H%M%S')}_"
             f"{source_file_size:08d}.{TARGET_FILE_FORMAT}")
         target_file_path = f"{target_folder_path}\\{target_file_name}"
-        is_unique = _check_file_uniqueness(
-            source_file_path, target_file_path)
+        try:
+            is_unique = _check_file_uniqueness(
+                source_file_path, target_file_path)
 
-        if is_unique is None:
-            # The file is unique, but a different one with the same name exists
-            file_stats.report_conflict()
-            logging.warning(
-                "%s skipped (conflict - a file with the given name already exists)",
-                source_file_path)
-        else:
-            if is_unique:
-                # This is a new file
-                if not dry_run:
-                    if not os.path.exists(target_folder_path):
-                        os.makedirs(
-                            target_folder_path, exist_ok=True)
-                    shutil.copyfile(
-                        source_file_path, target_file_path)
-                file_stats.report_copied()
-                logging.info("%s copied to %s",
-                                source_file_path, target_file_path)
-
+            if is_unique is None:
+                # The file is unique, but a different one with the same name exists
+                file_stats.report_conflict()
+                logging.warning(
+                    "%s skipped (conflict - a file with the given name already exists)",
+                    source_file_path)
             else:
-                # The file is a duplicate
-                file_stats.report_duplicate()
-                logging.info(
-                    "%s skipped (duplicate)", source_file_path)
+                if is_unique:
+                    # This is a new file
+                    if not dry_run:
+                        if not os.path.exists(target_folder_path):
+                            os.makedirs(
+                                target_folder_path, exist_ok=True)
+                        shutil.copyfile(
+                            source_file_path, target_file_path)
+                    file_stats.report_copied()
+                    logging.info("%s copied to %s",
+                                    source_file_path, target_file_path)
+
+                else:
+                    # The file is a duplicate
+                    file_stats.report_duplicate()
+                    logging.info(
+                        "%s skipped (duplicate)", source_file_path)
+        except OSError:
+            # An error occured
+            file_stats.report_error()
+            logging.info(
+                "%s skipped (error - see the above logs for details)", source_file_path)
 
 def _verify_and_copy_files(source_directory, target_directory, dry_run):
     """Verifies and copies files from the provided source directory to the target directory."""
@@ -167,6 +174,17 @@ def _verify_and_copy_files(source_directory, target_directory, dry_run):
 
             logging.info("""Operation summary for %s: %s""",
                          source_folder_path, file_stats)
+
+            if file_stats.errors > 0:
+                warning_message = "WARNING: "
+
+                if file_stats.errors == 1:
+                    warning_message += "An error"
+                else:
+                    warning_message += f"{file_stats.errors} errors"
+
+                warning_message += " occurred during the photo processing. Check the log file for details."
+                print(warning_message)
 
 
 def main():
