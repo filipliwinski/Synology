@@ -24,20 +24,25 @@ def _get_original_date_taken(photo_file_path):
     If the EXIF data is not present returns the last modified date.
     """
 
-    # Load the EXIF data from the file
-    exif_data = piexif.load(photo_file_path)
+    try:
+        # Load the EXIF data from the file
+        exif_data = piexif.load(photo_file_path)
 
-    # Get the value of the DateTimeOriginal tag (0x9003) from the EXIF data
-    date_taken = exif_data["Exif"].get(EXIF_DATE_TIME_ORGINAL)
+        # Get the value of the DateTimeOriginal tag (0x9003) from the EXIF data
+        date_taken = exif_data["Exif"].get(EXIF_DATE_TIME_ORGINAL)
 
-    # If the tag is present, convert the value to a datetime object and return it
-    if date_taken:
-        date_taken_str = date_taken.decode("utf-8")
-        return datetime.strptime(date_taken_str, "%Y:%m:%d %H:%M:%S")
+        # If the tag is present, convert the value to a datetime object and return it
+        if date_taken:
+            date_taken_str = date_taken.decode("utf-8")
+            return datetime.strptime(date_taken_str, "%Y:%m:%d %H:%M:%S")
 
-    # If the tag is not present or is invalid, return last modified date
-    last_modified = os.path.getmtime(photo_file_path)
-    return datetime.fromtimestamp(last_modified)
+        # If the tag is not present or is invalid, return last modified date
+        last_modified = os.path.getmtime(photo_file_path)
+        return datetime.fromtimestamp(last_modified)
+ 
+    except OSError:
+        logging.exception("Unable to access file '%s'", photo_file_path)
+        raise
 
 def _calculate_file_hash(file_path):
     """
@@ -55,10 +60,8 @@ def _calculate_file_hash(file_path):
 
         return file_hash
     except OSError:
-        logging.exception("Unable to calculate hash of file %s", file_path)
+        logging.exception("Unable to calculate hash of file '%s'", file_path)
         raise
-
-    return ""
 
 def _check_file_uniqueness(file_path, destination_file_path):
     """
@@ -96,18 +99,18 @@ def _verify_and_copy_file(file, source_file_path, target_directory, dry_run, fil
         file_stats.report_unsupported()
         return
 
-    creation_date = _get_original_date_taken(source_file_path)
-    target_folder = creation_date.strftime("%Y\\%m")
-    target_folder_path = f"{target_directory}\\{target_folder}"
-
-    source_file_size = os.path.getsize(source_file_path)
-    target_file_name = (
-        f"{TARGET_FILE_NAME_PREFIX}_"
-        f"{creation_date.strftime('%Y%m%d')}_"
-        f"{creation_date.strftime('%H%M%S')}_"
-        f"{source_file_size:08d}.{TARGET_FILE_FORMAT}")
-    target_file_path = f"{target_folder_path}\\{target_file_name}"
     try:
+        creation_date = _get_original_date_taken(source_file_path)
+        target_folder = creation_date.strftime("%Y\\%m")
+        target_folder_path = f"{target_directory}\\{target_folder}"
+
+        source_file_size = os.path.getsize(source_file_path)
+        target_file_name = (
+            f"{TARGET_FILE_NAME_PREFIX}_"
+            f"{creation_date.strftime('%Y%m%d')}_"
+            f"{creation_date.strftime('%H%M%S')}_"
+            f"{source_file_size:08d}.{TARGET_FILE_FORMAT}")
+        target_file_path = f"{target_folder_path}\\{target_file_name}"
         is_unique = _check_file_uniqueness(
             source_file_path, target_file_path)
 
@@ -185,8 +188,8 @@ def _verify_and_copy_files(source_directory, target_directory, dry_run):
                 else:
                     warning_message += f"{file_stats.errors} errors"
 
-                warning_message += (" occurred during the photo processing."
-                                    "Check the log file for details.")
+                warning_message += (" occurred while processing the photos."
+                                    " Check the log file for details.")
                 print(warning_message)
 
 
