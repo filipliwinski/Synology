@@ -39,7 +39,7 @@ def _get_original_date_taken(photo_file_path):
         # If the tag is not present or is invalid, return last modified date
         last_modified = os.path.getmtime(photo_file_path)
         return datetime.fromtimestamp(last_modified)
- 
+
     except OSError:
         logging.exception("Unable to access file '%s'", photo_file_path)
         raise
