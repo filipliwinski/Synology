@@ -24,20 +24,25 @@ def _get_original_date_taken(photo_file_path):
     If the EXIF data is not present returns the last modified date.
     """
 
-    # Load the EXIF data from the file
-    exif_data = piexif.load(photo_file_path)
+    try:
+        # Load the EXIF data from the file
+        exif_data = piexif.load(photo_file_path)
 
-    # Get the value of the DateTimeOriginal tag (0x9003) from the EXIF data
-    date_taken = exif_data["Exif"].get(EXIF_DATE_TIME_ORGINAL)
+        # Get the value of the DateTimeOriginal tag (0x9003) from the EXIF data
+        date_taken = exif_data["Exif"].get(EXIF_DATE_TIME_ORGINAL)
 
-    # If the tag is present, convert the value to a datetime object and return it
-    if date_taken:
-        date_taken_str = date_taken.decode("utf-8")
-        return datetime.strptime(date_taken_str, "%Y:%m:%d %H:%M:%S")
+        # If the tag is present, convert the value to a datetime object and return it
+        if date_taken:
+            date_taken_str = date_taken.decode("utf-8")
+            return datetime.strptime(date_taken_str, "%Y:%m:%d %H:%M:%S")
 
-    # If the tag is not present or is invalid, return last modified date
-    last_modified = os.path.getmtime(photo_file_path)
-    return datetime.fromtimestamp(last_modified)
+        # If the tag is not present or is invalid, return last modified date
+        last_modified = os.path.getmtime(photo_file_path)
+        return datetime.fromtimestamp(last_modified)
+
+    except OSError:
+        logging.exception("Unable to access file '%s'", photo_file_path)
+        raise
 
 def _calculate_file_hash(file_path):
     """
@@ -46,13 +51,17 @@ def _calculate_file_hash(file_path):
 
     sha256 = hashlib.sha256()
 
-    with open(file_path, "rb") as file:
-        file_bytes = file.read()
-        sha256.update(file_bytes)
+    try:
+        with open(file_path, "rb") as file:
+            file_bytes = file.read()
+            sha256.update(file_bytes)
 
-    file_hash = sha256.hexdigest()
+        file_hash = sha256.hexdigest()
 
-    return file_hash
+        return file_hash
+    except OSError:
+        logging.exception("Unable to calculate hash of file '%s'", file_path)
+        raise
 
 def _check_file_uniqueness(file_path, destination_file_path):
     """
@@ -88,9 +97,10 @@ def _verify_and_copy_file(file, source_file_path, target_directory, dry_run, fil
         logging.info(
             "%s skipped (unsupported file type)", source_file_path)
         file_stats.report_unsupported()
-    else:
-        creation_date = _get_original_date_taken(
-            source_file_path)
+        return
+
+    try:
+        creation_date = _get_original_date_taken(source_file_path)
         target_folder = creation_date.strftime("%Y\\%m")
         target_folder_path = f"{target_directory}\\{target_folder}"
 
@@ -110,24 +120,31 @@ def _verify_and_copy_file(file, source_file_path, target_directory, dry_run, fil
             logging.warning(
                 "%s skipped (conflict - a file with the given name already exists)",
                 source_file_path)
-        else:
-            if is_unique:
-                # This is a new file
-                if not dry_run:
-                    if not os.path.exists(target_folder_path):
-                        os.makedirs(
-                            target_folder_path, exist_ok=True)
-                    shutil.copyfile(
-                        source_file_path, target_file_path)
-                file_stats.report_copied()
-                logging.info("%s copied to %s",
-                                source_file_path, target_file_path)
+            return
 
-            else:
-                # The file is a duplicate
-                file_stats.report_duplicate()
-                logging.info(
-                    "%s skipped (duplicate)", source_file_path)
+        if is_unique:
+            # This is a new file
+            if not dry_run:
+                if not os.path.exists(target_folder_path):
+                    os.makedirs(
+                        target_folder_path, exist_ok=True)
+                shutil.copyfile(
+                    source_file_path, target_file_path)
+            file_stats.report_copied()
+            logging.info("%s copied to %s",
+                            source_file_path, target_file_path)
+            return
+
+        # The file is a duplicate
+        file_stats.report_duplicate()
+        logging.info(
+            "%s skipped (duplicate)", source_file_path)
+
+    except OSError:
+        # An error occured
+        file_stats.report_error()
+        logging.info(
+            "%s skipped (error - see the above logs for details)", source_file_path)
 
 def _verify_and_copy_files(source_directory, target_directory, dry_run):
     """Verifies and copies files from the provided source directory to the target directory."""
@@ -162,6 +179,18 @@ def _verify_and_copy_files(source_directory, target_directory, dry_run):
 
             logging.info("""Operation summary for %s: %s""",
                          source_folder_path, file_stats)
+
+            if file_stats.errors > 0:
+                warning_message = "WARNING: "
+
+                if file_stats.errors == 1:
+                    warning_message += "An error"
+                else:
+                    warning_message += f"{file_stats.errors} errors"
+
+                warning_message += (" occurred while processing the photos."
+                                    " Check the log file for details.")
+                print(warning_message)
 
 
 def main():

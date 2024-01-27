@@ -11,6 +11,7 @@ class FileStats:
     def __init__(self):
         self._copied = 0
         self._skipped = 0
+        self._errors = 0
         self._conflicts = 0
         self._duplicates = 0
         self._unsupported = 0
@@ -29,6 +30,11 @@ class FileStats:
     def skipped(self):
         """Returns the number of skipped files."""
         return self._skipped
+
+    @property
+    def errors(self):
+        """Returns the number of errors."""
+        return self._errors
 
     @property
     def conflicts(self):
@@ -53,6 +59,11 @@ class FileStats:
         """Increments the number of skipped files."""
         self._skipped += 1
 
+    def report_error(self):
+        """Increments the number of errors."""
+        self._errors += 1
+        self.report_skipped()
+
     def report_conflict(self):
         """Increments the number of files with name conflicts."""
         self._conflicts += 1
@@ -73,5 +84,6 @@ class FileStats:
         COPIED: {self.copied}
         DUPLICATES: {self.duplicates}
         CONFLICTS: {self.conflicts}
+        ERRORS: {self.errors}
         UNSUPPORTED: {self.unsupported}
         TOTAL: {self.total}"""
